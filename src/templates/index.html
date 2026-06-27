@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hera Project Tracker</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <img src="{{ url_for('static', filename='görseller/Hera_Logo_Siyah_RGB1.png') }}" alt="Hera Logo" style="height: 40px; width: auto; object-fit: contain;">
+                <h1 data-lang-key="dashboard_title" style="margin: 0;">Hera Project Tracker</h1>
+            </div>
+            <div class="header-actions">
+                <a href="{{ url_for('settings') }}" class="btn btn-secondary" style="background-color: #6c757d;">⚙️</a>
+                <a href="{{ url_for('export_excel') }}" class="btn btn-success" data-lang-key="export_excel">Export to Excel</a>
+            </div>
+        </header>
+
+        <div class="person-cards">
+            {% for person in people %}
+            <a href="{{ url_for('person_detail', person_id=person['id']) }}" class="person-card">
+                <h3>{{ person['name'] }}</h3>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='app.js') }}?v=13"></script>
+</body>
+</html>

@@ -1,0 +1,222 @@
+/* Base Styles */
+:root {
+    --primary-color: #4682B4; /* Steel Blue */
+    --secondary-color: #f8f9fa;
+    --text-color: #333;
+    --border-color: #ddd;
+    --card-bg: #fff;
+    --success-color: #28a745;
+    --warning-color: #ffc107;
+    --danger-color: #dc3545;
+    --info-color: #17a2b8;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: var(--secondary-color);
+    color: var(--text-color);
+}
+
+.container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* Header */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 0;
+    border-bottom: 2px solid var(--primary-color);
+    margin-bottom: 30px;
+}
+
+h1, h2 {
+    color: var(--primary-color);
+    margin: 0;
+}
+
+.header-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.btn {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    text-decoration: none;
+    display: inline-block;
+    transition: background-color 0.3s;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+}
+.btn-primary:hover {
+    background-color: #315f86;
+}
+
+.btn-success { background-color: var(--success-color); color: white; }
+.btn-warning { background-color: var(--warning-color); color: #333; }
+.btn-danger { background-color: var(--danger-color); color: white; }
+.btn-info { background-color: var(--info-color); color: white; }
+.btn-secondary { background-color: #6c757d; color: white; }
+
+/* Dashboard Cards */
+.person-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.person-card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    text-decoration: none;
+    color: var(--text-color);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.person-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+    border-color: var(--primary-color);
+}
+
+.person-card h3 {
+    margin: 0;
+    font-size: 1.2rem;
+}
+
+/* Forms */
+.form-card {
+    background: var(--card-bg);
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 30px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.form-group input[type="text"],
+.form-group input[type="date"],
+.form-group select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+.checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Lists */
+.task-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.task-item {
+    background: var(--card-bg);
+    border-left: 5px solid var(--primary-color);
+    padding: 15px;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.task-info {
+    flex-grow: 1;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    max-width: 80%;
+}
+
+.task-title {
+    font-weight: bold;
+    font-size: 1.1rem;
+    margin-bottom: 5px;
+}
+
+.expandable-task-title {
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    transition: text-decoration-color 0.2s;
+}
+
+.expandable-task-title:hover {
+    text-decoration-color: var(--primary-color);
+}
+
+.task-meta {
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    color: white;
+    margin-right: 10px;
+}
+
+.badge-1 { background-color: var(--danger-color); color: white; } /* This week (Urgent - Red) */
+.badge-2 { background-color: var(--warning-color); color: #333; } /* Next week (Warning - Orange/Yellow) */
+.badge-3 { background-color: var(--success-color); color: white; } /* This month (Safe - Green) */
+.badge-4 { background-color: #6f42c1; color: white;} /* Uncertain Deadline (Purple) */
+.badge-5 { background-color: #6c757d; color: white;} /* On hold (Inactive - Gray) */
+
+.badge-open { background-color: var(--primary-color); }
+.badge-closed { background-color: var(--danger-color); }
+
+.task-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.btn-delete-icon {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    opacity: 0.3;
+    transition: opacity 0.2s;
+    padding: 5px;
+    margin-left: 10px;
+}
+
+.btn-delete-icon:hover {
+    opacity: 1;
+}

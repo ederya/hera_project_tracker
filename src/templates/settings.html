@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Hera Project Tracker</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><span data-lang-key="settings">Settings</span></h1>
+            <div class="header-actions">
+                <a href="{{ url_for('index') }}" class="btn btn-secondary" data-lang-key="back_to_dashboard">Back to Dashboard</a>
+                <button id="lang-toggle" class="btn btn-secondary">🇹🇷 TR</button>
+            </div>
+        </header>
+
+        <div class="form-card">
+            <h2 data-lang-key="add_person">Add Person</h2>
+            <form action="{{ url_for('add_person') }}" method="POST" style="display: flex; gap: 10px; margin-top: 15px;">
+                <input type="text" name="name" required data-lang-key="new_person_placeholder" placeholder="Enter person name..." style="flex-grow: 1; padding: 10px;">
+                <button type="submit" class="btn btn-primary" data-lang-key="add">Add</button>
+            </form>
+        </div>
+
+        <div class="task-list" style="margin-top: 20px;">
+            <h2 data-lang-key="manage_people" style="margin-bottom: 15px;">Manage People</h2>
+            {% for person in people %}
+            <div class="task-item">
+                <div class="task-info" style="display: flex; gap: 10px; width: 100%;">
+                    <form action="{{ url_for('edit_person', person_id=person['id']) }}" method="POST" style="display: flex; gap: 10px; flex-grow: 1;">
+                        <input type="text" name="new_name" value="{{ person['name'] }}" required style="padding: 5px; flex-grow: 1; border: 1px solid #ddd; border-radius: 4px;">
+                        <button type="submit" class="btn btn-info" data-lang-key="save">Save</button>
+                    </form>
+                    <form action="{{ url_for('delete_person', person_id=person['id']) }}" method="POST" class="delete-person-form" style="margin: 0; display: flex;">
+                        <button type="submit" class="btn btn-danger" title="Delete Person" data-lang-key="delete" style="display: flex; align-items: center; gap: 5px;">🗑️ Delete</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+            {% if not people %}
+            <p>No people found.</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='app.js') }}?v=12"></script>
+</body>
+</html>

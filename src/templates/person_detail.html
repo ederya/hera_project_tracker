@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tasks - {{ person['name'] }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><span data-lang-key="tasks_for">Tasks for</span> {{ person['name'] }}</h1>
+            <div class="header-actions">
+                <a href="{{ url_for('index') }}" class="btn btn-secondary" data-lang-key="back_to_dashboard">Back to Dashboard</a>
+                <button id="toggle-add-task-btn" class="btn btn-primary" data-lang-key="add_task_btn">Add Task</button>
+                <button id="toggle-completed-btn" class="btn btn-info" data-lang-key="show_completed_tasks">Completed Tasks</button>
+            </div>
+        </header>
+
+        <div id="add-task-form-container" class="form-card" style="display: none;">
+            <h2 data-lang-key="add_new_task">Add New Task</h2>
+            <form action="{{ url_for('add_task', person_id=person['id']) }}" method="POST" style="margin-top: 15px;">
+                <input type="hidden" name="sort_mode" value="{{ current_sort }}">
+                <div class="form-group">
+                    <label data-lang-key="action_name">Action Name</label>
+                    <input type="text" name="action_name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label data-lang-key="status">Status</label>
+                    <input type="text" name="status" required>
+                </div>
+                
+                <div class="form-group" id="target-period-group-add">
+                    <label data-lang-key="target_period">Target Period</label>
+                    <select name="target_period_id" class="target-period-select" required>
+                        <option value="1" data-lang-key="this_week">This Week</option>
+                        <option value="2" data-lang-key="next_week">Next Week</option>
+                        <option value="3" data-lang-key="this_month">This Month</option>
+                        <option value="4" data-lang-key="uncertain_deadline">Uncertain Deadline</option>
+                        <option value="5" data-lang-key="on_hold">On Hold</option>
+                    </select>
+                </div>
+                
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="is_exact_date_active" name="is_exact_date_active">
+                    <label for="is_exact_date_active" data-lang-key="has_exact_date" style="margin:0;">Has Exact Date?</label>
+                </div>
+                
+                <div class="form-group">
+                    <label data-lang-key="exact_date">Exact Date</label>
+                    <input type="date" id="exact_date" name="exact_date" disabled>
+                </div>
+                
+                <button type="submit" class="btn btn-primary" data-lang-key="add">Add</button>
+            </form>
+        </div>
+
+        {% macro render_task_list(tasks_to_render, is_open) %}
+            {% for task in tasks_to_render if task['result'] == ('Open' if is_open else 'Closed') %}
+            <div class="task-container" data-task-id="{{ task['id'] }}">
+                <div class="task-item" style="{% if not is_open %}opacity: 0.7;{% endif %} position: relative; z-index: 2;">
+                <div class="task-info" style="cursor: pointer;" onclick="toggleTaskDetail('detail-{{ task['id'] }}', 'edit-form-{{ task['id'] }}')">
+                    <div class="task-title expandable-task-title">{{ task['action_name'] }}</div>
+                    <div class="task-meta">
+                        <span class="badge badge-{{ task['target_period_id'] }}" 
+                            {% if not task['is_exact_date_active'] %}
+                                data-lang-key="{% if task['target_period_id'] == 1 %}this_week{% elif task['target_period_id'] == 2 %}next_week{% elif task['target_period_id'] == 3 %}this_month{% elif task['target_period_id'] == 4 %}uncertain_deadline{% else %}on_hold{% endif %}"
+                            {% endif %}>
+                            {% if task['is_exact_date_active'] %}
+                                📅 {{ task['exact_date_formatted'] }}
+                            {% else %}
+                                {% if task['target_period_id'] == 1 %}This Week{% elif task['target_period_id'] == 2 %}Next Week{% elif task['target_period_id'] == 3 %}This Month{% elif task['target_period_id'] == 4 %}Uncertain Deadline{% else %}On Hold{% endif %}
+                            {% endif %}
+                        </span>
+                        
+                        <span class="badge badge-{% if is_open %}open{% else %}closed{% endif %}" data-lang-key="{% if is_open %}open{% else %}closed{% endif %}">{{ task['result'] }}</span>
+                        
+                        <span>| <strong data-lang-key="status">Status</strong>: {{ task['status'] }} </span>
+                    </div>
+                </div>
+                <div class="task-actions">
+                    <form action="{{ url_for('update_task_result', task_id=task['id']) }}" method="POST" {% if is_open %}class="close-task-form"{% endif %}>
+                        <input type="hidden" name="sort_mode" value="{{ current_sort }}">
+                        <input type="hidden" name="person_id" value="{{ person['id'] }}">
+                        <input type="hidden" name="result" value="{% if is_open %}Closed{% else %}Open{% endif %}">
+                        <button type="submit" class="btn btn-{% if is_open %}success{% else %}warning{% endif %}" data-lang-key="{% if is_open %}close_task{% else %}reopen_task{% endif %}">{% if is_open %}Close{% else %}Re-Open{% endif %}</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Expandable Detail -->
+            <div id="detail-{{ task['id'] }}" style="display: none; padding: 20px; background: var(--secondary-color); border: 1px solid var(--border-color); border-top: none; border-radius: 0 0 8px 8px; margin-top: -15px; margin-bottom: 15px; position: relative; z-index: 1;">
+                
+                <div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 15px;">
+                    <button type="button" class="btn btn-info" onclick="toggleEditForm('edit-form-{{ task['id'] }}')" data-lang-key="edit_task" style="padding: 5px 10px; font-size: 0.9em;">✏️ Edit Task</button>
+                </div>
+
+                <div id="edit-form-{{ task['id'] }}" style="display: none; margin-bottom: 30px; background: var(--card-bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); position: relative;">
+                    <form action="{{ url_for('delete_task', task_id=task['id']) }}" method="POST" class="delete-task-form" style="position: absolute; bottom: 15px; right: 15px; margin: 0;">
+                        <input type="hidden" name="sort_mode" value="{{ current_sort }}">
+                        <input type="hidden" name="person_id" value="{{ person['id'] }}">
+                        <button type="submit" class="btn btn-danger" style="padding: 8px 15px;" title="Delete" data-lang-key="delete">🗑️ Delete</button>
+                    </form>
+                    
+                    <form action="{{ url_for('edit_task', task_id=task['id']) }}" method="POST" style="margin: 0;">
+                        <input type="hidden" name="sort_mode" value="{{ current_sort }}">
+                        <div class="form-group">
+                            <label data-lang-key="action_name">Action Name</label>
+                            <input type="text" name="action_name" value="{{ task['action_name'] }}" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label data-lang-key="status">Status</label>
+                            <input type="text" name="status" value="{{ task['status'] }}" required>
+                        </div>
+                        
+                        <div class="form-group" id="target-period-group-{{ task['id'] }}">
+                            <label data-lang-key="target_period">Target Period</label>
+                            <select name="target_period_id" class="target-period-select" id="target-period-{{ task['id'] }}" required>
+                                <option value="1" {% if task['target_period_id'] == 1 %}selected{% endif %} data-lang-key="this_week">This Week</option>
+                                <option value="2" {% if task['target_period_id'] == 2 %}selected{% endif %} data-lang-key="next_week">Next Week</option>
+                                <option value="3" {% if task['target_period_id'] == 3 %}selected{% endif %} data-lang-key="this_month">This Month</option>
+                                <option value="4" {% if task['target_period_id'] == 4 %}selected{% endif %} data-lang-key="uncertain_deadline">Uncertain Deadline</option>
+                                <option value="5" {% if task['target_period_id'] == 5 %}selected{% endif %} data-lang-key="on_hold">On Hold</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group checkbox-group">
+                            <input type="checkbox" name="is_exact_date_active" class="edit-exact-date-cb" data-target="exact-date-{{ task['id'] }}" data-select-target="target-period-{{ task['id'] }}" data-group-target="target-period-group-{{ task['id'] }}" {% if task['is_exact_date_active'] %}checked{% endif %}>
+                            <label data-lang-key="has_exact_date" style="margin:0;">Has Exact Date?</label>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label data-lang-key="exact_date">Exact Date</label>
+                            <input type="date" name="exact_date" id="exact-date-{{ task['id'] }}" value="{{ task['exact_date'] }}" {% if not task['is_exact_date_active'] %}disabled{% endif %}>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary" data-lang-key="save_changes">Save Changes</button>
+                    </form>
+                </div>
+
+                <h4 style="margin-top: 0; margin-bottom: 15px;" data-lang-key="task_history">Task History</h4>
+                {% for log in task['history'] %}
+                <div class="task-item" style="opacity: 0.7; box-shadow: none; border: 1px dashed #aaa; margin-bottom: 10px; flex-direction: column; align-items: flex-start;">
+                    <div class="task-title" style="font-size: 1rem;">{{ log['action_name'] }} <span style="font-size: 0.8em; font-weight: normal; color: #666;">({{ log['timestamp'] }})</span></div>
+                    <div class="task-meta" style="margin-top: 5px;">
+                        <span class="badge badge-{{ log['target_period_id'] }}" 
+                            {% if not log['is_exact_date_active'] %}
+                                data-lang-key="{% if log['target_period_id'] == 1 %}this_week{% elif log['target_period_id'] == 2 %}next_week{% elif log['target_period_id'] == 3 %}this_month{% elif log['target_period_id'] == 4 %}uncertain_deadline{% else %}on_hold{% endif %}"
+                            {% endif %}>
+                            {% if log['is_exact_date_active'] %}
+                                📅 {{ log['exact_date_formatted'] }}
+                            {% else %}
+                                {% if log['target_period_id'] == 1 %}This Week{% elif log['target_period_id'] == 2 %}Next Week{% elif log['target_period_id'] == 3 %}This Month{% elif log['target_period_id'] == 4 %}Uncertain Deadline{% else %}On Hold{% endif %}
+                            {% endif %}
+                        </span>
+                        <span class="badge badge-{% if log['result'] == 'Open' %}open{% else %}closed{% endif %}" data-lang-key="{% if log['result'] == 'Open' %}open{% else %}closed{% endif %}">{{ log['result'] }}</span>
+                        <span>| <strong data-lang-key="status">Status</strong>: {{ log['status'] }} </span>
+                    </div>
+                </div>
+                {% else %}
+                <p data-lang-key="no_history">No history available for this task.</p>
+                {% endfor %}
+            </div>
+            </div>
+            {% endfor %}
+        {% endmacro %}
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 30px; margin-bottom: 15px;">
+            <h2 data-lang-key="open_tasks" style="margin: 0; color: var(--primary-color);">Open Tasks</h2>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <label data-lang-key="sort_by" style="font-weight: bold; margin: 0;">Sort By:</label>
+                <select id="task-sort-select" style="padding: 5px; border-radius: 4px; border: 1px solid var(--border-color);">
+                    <option value="manual" {% if current_sort == 'manual' %}selected{% endif %} data-lang-key="sort_manual">Manual (Drag & Drop)</option>
+                    <option value="priority" {% if current_sort == 'priority' %}selected{% endif %} data-lang-key="sort_priority">Priority</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="task-list" id="open-tasks-container">
+            {{ render_task_list(tasks, True) }}
+            {% if not tasks %}
+            <p data-lang-key="no_tasks">No tasks found for this person.</p>
+            {% endif %}
+        </div>
+
+        <div class="task-list" id="completed-tasks-container" style="display: none;">
+            {{ render_task_list(tasks, False) }}
+        </div>
+    </div>
+    
+    <script>
+        function toggleTaskDetail(id, editFormId) {
+            const el = document.getElementById(id);
+            if (el.style.display === 'none') {
+                el.style.display = 'block';
+            } else {
+                el.style.display = 'none';
+                if (editFormId) {
+                    document.getElementById(editFormId).style.display = 'none';
+                }
+            }
+        }
+        
+        function toggleEditForm(id) {
+            const el = document.getElementById(id);
+            if (el.style.display === 'none') {
+                el.style.display = 'block';
+            } else {
+                el.style.display = 'none';
+            }
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script src="{{ url_for('static', filename='app.js') }}?v=12"></script>
+</body>
+</html>
