@@ -17,7 +17,8 @@ def generate_excel(lang='EN'):
             1: "Bu Hafta",
             2: "Gelecek Hafta",
             3: "Bu Ay İçinde",
-            4: "Beklemede"
+            4: "Belirsiz",
+            5: "Beklemede"
         }
         headers = ["Aksiyon Adı", "Durum", "Hedef Dönem", "Kesin Tarih", "İlgili Kişiler", "Sonuç"]
         open_text = "Açık"
@@ -28,7 +29,8 @@ def generate_excel(lang='EN'):
             1: "This Week",
             2: "Next Week",
             3: "This Month",
-            4: "On Hold"
+            4: "Uncertain",
+            5: "On Hold"
         }
         headers = ["Action", "Status", "Target Period", "Exact Date", "Related People", "Result"]
         open_text = "Open"

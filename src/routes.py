@@ -53,10 +53,11 @@ def person_detail(person_id):
         return redirect(url_for('index'))
     
     sort_mode = request.args.get('sort')
+    session_key = f'sort_mode_{person_id}'
     if sort_mode:
-        session['sort_mode'] = sort_mode
+        session[session_key] = sort_mode
     else:
-        sort_mode = session.get('sort_mode', 'manual')
+        sort_mode = session.get(session_key, 'manual')
     
     tasks = database.get_tasks_by_person(person_id, sort_mode=sort_mode)
     tasks.extend(database.get_tasks_waiting_on_person(person_id))

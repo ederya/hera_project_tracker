@@ -178,6 +178,15 @@ def get_tasks_by_person(person_id, sort_mode='manual'):
             task['exact_date_formatted'] = None
         tasks.append(task)
         
+    if sort_mode == 'priority':
+        tasks.sort(key=lambda x: (
+            x['target_period_id'],
+            1 if (not x['exact_date'] or x['exact_date'] == '') else 0,
+            x['exact_date'] or '',
+            x['sort_order'],
+            -x['id']
+        ))
+        
     conn.close()
     return tasks
 
@@ -213,8 +222,17 @@ def get_all_tasks_with_people():
     for row in raw_data:
         task = dict(row)
         task['collaborators'] = collaborators_by_task.get(task['id'], [])
-        task['target_period_id'] = _get_dynamic_period(task['exact_date'], task['target_period_id'])
+        if task['is_exact_date_active']:
+            task['target_period_id'] = _get_dynamic_period(task['exact_date'], task['target_period_id'])
         data.append(task)
+        
+    data.sort(key=lambda x: (
+        x['person_name'],
+        x['target_period_id'],
+        1 if (not x['exact_date'] or x['exact_date'] == '') else 0,
+        x['exact_date'] or '',
+        -x['id']
+    ))
         
     return data
 
