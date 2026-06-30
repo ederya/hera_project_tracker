@@ -1,4 +1,4 @@
-from flask import render_template, request, redirect, url_for, send_file
+from flask import render_template, request, redirect, url_for, send_file, session
 from src import app
 from src import database
 from src.utils.excel_generator import generate_excel
@@ -52,7 +52,11 @@ def person_detail(person_id):
     if not person:
         return redirect(url_for('index'))
     
-    sort_mode = request.args.get('sort', 'manual')
+    sort_mode = request.args.get('sort')
+    if sort_mode:
+        session['sort_mode'] = sort_mode
+    else:
+        sort_mode = session.get('sort_mode', 'manual')
     
     tasks = database.get_tasks_by_person(person_id, sort_mode=sort_mode)
     tasks.extend(database.get_tasks_waiting_on_person(person_id))

@@ -134,7 +134,7 @@ def get_tasks_by_person(person_id, sort_mode='manual'):
     conn = get_db_connection()
     
     if sort_mode == 'priority':
-        order_clause = 'CASE WHEN tasks.exact_date IS NULL THEN 1 ELSE 0 END, tasks.exact_date ASC, tasks.target_period_id ASC, tasks.sort_order ASC, tasks.id DESC'
+        order_clause = "tasks.target_period_id ASC, CASE WHEN tasks.exact_date IS NULL OR tasks.exact_date = '' THEN 1 ELSE 0 END, tasks.exact_date ASC, tasks.sort_order ASC, tasks.id DESC"
     else: # manual
         order_clause = 'tasks.sort_order ASC, tasks.id DESC'
         
