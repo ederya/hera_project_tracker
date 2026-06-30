@@ -5,6 +5,35 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tasks - {{ person['name'] }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .dropdown-header {
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-color);
+        }
+        .dropdown-list {
+            border: 1px solid var(--border-color);
+            border-top: none;
+            max-height: 200px;
+            overflow-y: auto;
+            border-bottom-left-radius: 4px;
+            border-bottom-right-radius: 4px;
+            background: var(--bg-color);
+            width: 100%;
+        }
+        .dropdown-item {
+            padding: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .dropdown-item:last-child {
+            border-bottom: none;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -23,12 +52,12 @@
                 <input type="hidden" name="sort_mode" value="{{ current_sort }}">
                 <div class="form-group">
                     <label data-lang-key="action_name">Action Name</label>
-                    <input type="text" name="action_name" required>
+                    <input type="text" name="action_name" required autocomplete="off">
                 </div>
                 
                 <div class="form-group">
                     <label data-lang-key="status">Status</label>
-                    <input type="text" name="status" required>
+                    <input type="text" name="status" required autocomplete="off">
                 </div>
                 
                 <div class="form-group" id="target-period-group-add">
@@ -42,12 +71,40 @@
                     </select>
                 </div>
                 
+                <div class="form-group checkbox-group" style="margin-bottom: 10px;">
+                    <input type="checkbox" id="has_waiting_person_add" onchange="toggleWaitingPersonSection('add')">
+                    <label for="has_waiting_person_add" data-lang-key="has_waiting_person" style="margin:0;">Beklenen Kişi Var Mı?</label>
+                </div>
+                
+                <div class="form-group custom-dropdown-group" id="waiting-person-section-add" style="position: relative; display: none;">
+                    <label data-lang-key="waiting_on_person">Waiting On Person</label>
+                    <div class="dropdown-header" onclick="toggleDropdown('add')">
+                        <span data-lang-key="select_people">Select People...</span>
+                        <span class="dropdown-arrow">▼</span>
+                    </div>
+                    <div id="dropdown-list-add" class="dropdown-list" style="display: none;">
+                        {% for p in all_people %}
+                            {% if p['id'] != person['id'] %}
+                                <div class="dropdown-item">
+                                    <label style="display: flex; align-items: center; margin-bottom: 0; font-weight: normal; cursor: pointer;">
+                                        <input type="checkbox" name="waiting_on_person_ids" value="{{ p['id'] }}" data-id="add" onchange="togglePersonReason('add', '{{ p['id'] }}', '{{ p['name'] }}', this)"> 
+                                        <span style="margin-left: 8px;">{{ p['name'] }}</span>
+                                    </label>
+                                    <div id="reason-box-add-{{ p['id'] }}" style="display: none; margin-top: 10px; padding-left: 20px;">
+                                        <input type="text" name="waiting_reason_{{ p['id'] }}" data-lang-key="waiting_reason_placeholder" placeholder="Why are you waiting?" style="width: 100%; padding: 6px; font-size: 0.9em;" autocomplete="off">
+                                    </div>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+                
                 <div class="form-group checkbox-group">
                     <input type="checkbox" id="is_exact_date_active" name="is_exact_date_active">
                     <label for="is_exact_date_active" data-lang-key="has_exact_date" style="margin:0;">Has Exact Date?</label>
                 </div>
                 
-                <div class="form-group">
+                <div class="form-group" id="exact-date-group-add" style="display: none;">
                     <label data-lang-key="exact_date">Exact Date</label>
                     <input type="date" id="exact_date" name="exact_date" disabled>
                 </div>
@@ -79,8 +136,54 @@
                         <span>| <strong data-lang-key="status">Status</strong>: {{ task['status'] }} </span>
                     </div>
                 </div>
+                
+                <div class="task-middle" style="flex: 1; text-align: center; color: var(--warning-color); font-weight: bold; font-size: 0.9em; padding: 0 15px; min-width: 0;">
+                    {% if task['person_id'] != person['id'] %}
+                        {# Bu görev bu kişiden bekleniyor #}
+                        <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                            <div style="display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, rgba(255,193,7,0.15), rgba(255,193,7,0.05)); border: 1px solid rgba(255,193,7,0.5); color: #856404; padding: 5px 14px; border-radius: 20px; font-size: 0.85em; white-space: nowrap;">
+                                ⏳ <strong>{{ task['owner_name'] }}</strong> bekliyor
+                            </div>
+                            <div style="font-size: 0.78em; font-weight: normal; color: #999; white-space: nowrap;">
+                                İşin Sahibi: <strong style="color: var(--text-color);">{{ task['owner_name'] }}</strong>
+                            </div>
+                            {% if task['waiting_reason'] %}
+                            <div style="margin-top: 2px; font-size: 0.82em; font-weight: normal; color: #666; font-style: italic; word-break: break-word; white-space: normal; max-width: 200px; line-height: 1.4; text-align: center;">
+                                {{ task['waiting_reason'] }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    {% elif task['collaborators'] %}
+                        {# Görev sahibi view - kimlerden bekleniyor #}
+                        <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                        {% for collab in task['collaborators'] %}
+                            {% if collab['is_completed'] %}
+                                <div style="display: inline-flex; align-items: center; gap: 5px; background: rgba(40,167,69,0.1); border: 1px solid rgba(40,167,69,0.4); color: #155724; padding: 4px 12px; border-radius: 20px; font-size: 0.82em; white-space: nowrap;">
+                                    ✅ {{ collab['name'] }} <span data-lang-key="waiting_completed" style="font-weight:normal;">tamamladı</span>
+                                </div>
+                            {% else %}
+                                <div style="display: inline-flex; align-items: center; gap: 5px; background: linear-gradient(135deg, rgba(255,193,7,0.15), rgba(255,193,7,0.05)); border: 1px solid rgba(255,193,7,0.5); color: #856404; padding: 4px 12px; border-radius: 20px; font-size: 0.82em; white-space: nowrap;">
+                                    ⏳ <strong>{{ collab['name'] }}</strong> bekleniyor
+                                </div>
+                                {% if collab['waiting_reason'] %}
+                                <div style="font-size: 0.8em; font-weight: normal; color: #666; font-style: italic; word-break: break-word; white-space: normal; max-width: 200px; line-height: 1.4; text-align: center;">
+                                    {{ collab['waiting_reason'] }}
+                                </div>
+                                {% endif %}
+                            {% endif %}
+                        {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                
                 <div class="task-actions">
-                    <form action="{{ url_for('update_task_result', task_id=task['id']) }}" method="POST" {% if is_open %}class="close-task-form"{% endif %}>
+                    {% set incomplete_names = [] %}
+                    {% if task['collaborators'] %}
+                        {% for c in task['collaborators'] if not c['is_completed'] %}
+                            {% set _ = incomplete_names.append(c['name']) %}
+                        {% endfor %}
+                    {% endif %}
+                    <form action="{{ url_for('update_task_result', task_id=task['id']) }}" method="POST" {% if is_open and task['person_id'] == person['id'] %}class="close-task-form"{% endif %} data-incomplete-names="{{ incomplete_names|join(', ') }}">
                         <input type="hidden" name="sort_mode" value="{{ current_sort }}">
                         <input type="hidden" name="person_id" value="{{ person['id'] }}">
                         <input type="hidden" name="result" value="{% if is_open %}Closed{% else %}Open{% endif %}">
@@ -92,6 +195,7 @@
             <!-- Expandable Detail -->
             <div id="detail-{{ task['id'] }}" style="display: none; padding: 20px; background: var(--secondary-color); border: 1px solid var(--border-color); border-top: none; border-radius: 0 0 8px 8px; margin-top: -15px; margin-bottom: 15px; position: relative; z-index: 1;">
                 
+                {% if task['person_id'] == person['id'] %}
                 <div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 15px;">
                     <button type="button" class="btn btn-info" onclick="toggleEditForm('edit-form-{{ task['id'] }}')" data-lang-key="edit_task" style="padding: 5px 10px; font-size: 0.9em;">✏️ Edit Task</button>
                 </div>
@@ -107,12 +211,12 @@
                         <input type="hidden" name="sort_mode" value="{{ current_sort }}">
                         <div class="form-group">
                             <label data-lang-key="action_name">Action Name</label>
-                            <input type="text" name="action_name" value="{{ task['action_name'] }}" required>
+                            <input type="text" name="action_name" value="{{ task['action_name'] }}" required autocomplete="off">
                         </div>
                         
                         <div class="form-group">
                             <label data-lang-key="status">Status</label>
-                            <input type="text" name="status" value="{{ task['status'] }}" required>
+                            <input type="text" name="status" value="{{ task['status'] }}" required autocomplete="off">
                         </div>
                         
                         <div class="form-group" id="target-period-group-{{ task['id'] }}">
@@ -126,12 +230,60 @@
                             </select>
                         </div>
                         
+                        <div class="form-group checkbox-group" style="margin-bottom: 10px;">
+                            {% set has_incomplete = false %}
+                            {% if task['collaborators'] %}
+                                {% for c in task['collaborators'] %}
+                                    {% if not c['is_completed'] %}
+                                        {% set has_incomplete = true %}
+                                    {% endif %}
+                                {% endfor %}
+                            {% endif %}
+                            <input type="checkbox" id="has_waiting_person_{{ task['id'] }}" onchange="toggleWaitingPersonSection('{{ task['id'] }}')">
+                            <label for="has_waiting_person_{{ task['id'] }}" data-lang-key="has_waiting_person" style="margin:0;">Beklenen Kişi Var Mı?</label>
+                            {% if task['collaborators'] %}
+                            <small style="color: #888; margin-left: 8px;">({{ task['collaborators']|length }} <span data-lang-key="people_exist">kişi mevcut</span>)</small>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="form-group custom-dropdown-group" id="waiting-person-section-{{ task['id'] }}" style="position: relative; display: none;">
+                            <label data-lang-key="waiting_on_person">Waiting On Person</label>
+                            <div class="dropdown-header" onclick="toggleDropdown('{{ task['id'] }}')">
+                                <span data-lang-key="select_people">Select People...</span>
+                                <span class="dropdown-arrow">▼</span>
+                            </div>
+                            <div id="dropdown-list-{{ task['id'] }}" class="dropdown-list" style="display: none;">
+                                {% set collab_dict = {} %}
+                                {% if task['collaborators'] %}
+                                    {% for c in task['collaborators'] %}
+                                        {% set _ = collab_dict.update({c['id']: c}) %}
+                                    {% endfor %}
+                                {% endif %}
+                                {% for p in all_people %}
+                                    {% if p['id'] != person['id'] %}
+                                        <div class="dropdown-item">
+                                            <label style="display: flex; align-items: center; margin-bottom: 0; font-weight: normal; {% if p['id'] in collab_dict and not collab_dict[p['id']]['is_completed'] %}cursor: not-allowed;{% else %}cursor: pointer;{% endif %}">
+                                                <input type="checkbox" name="waiting_on_person_ids" value="{{ p['id'] }}" data-id="{{ task['id'] }}" onchange="togglePersonReason('{{ task['id'] }}', '{{ p['id'] }}', '{{ p['name'] }}', this)" {% if p['id'] in collab_dict %}checked{% endif %} {% if p['id'] in collab_dict and not collab_dict[p['id']]['is_completed'] %}disabled{% endif %}> 
+                                                {% if p['id'] in collab_dict and not collab_dict[p['id']]['is_completed'] %}
+                                                    <input type="hidden" name="waiting_on_person_ids" value="{{ p['id'] }}">
+                                                {% endif %}
+                                                <span style="margin-left: 8px;">{{ p['name'] }}</span>
+                                            </label>
+                                            <div id="reason-box-{{ task['id'] }}-{{ p['id'] }}" style="{% if p['id'] not in collab_dict %}display: none;{% endif %} margin-top: 10px; padding-left: 20px;">
+                                                <input type="text" name="waiting_reason_{{ p['id'] }}" value="{{ collab_dict[p['id']]['waiting_reason'] if p['id'] in collab_dict and collab_dict[p['id']]['waiting_reason'] else '' }}" data-lang-key="waiting_reason_placeholder" placeholder="Why are you waiting?" style="width: 100%; padding: 6px; font-size: 0.9em;" autocomplete="off">
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
                         <div class="form-group checkbox-group">
-                            <input type="checkbox" name="is_exact_date_active" class="edit-exact-date-cb" data-target="exact-date-{{ task['id'] }}" data-select-target="target-period-{{ task['id'] }}" data-group-target="target-period-group-{{ task['id'] }}" {% if task['is_exact_date_active'] %}checked{% endif %}>
+                            <input type="checkbox" name="is_exact_date_active" class="edit-exact-date-cb" data-target="exact-date-{{ task['id'] }}" data-select-target="target-period-{{ task['id'] }}" data-group-target="target-period-group-{{ task['id'] }}" data-date-group="exact-date-group-{{ task['id'] }}" {% if task['is_exact_date_active'] %}checked{% endif %}>
                             <label data-lang-key="has_exact_date" style="margin:0;">Has Exact Date?</label>
                         </div>
                         
-                        <div class="form-group">
+                        <div class="form-group" id="exact-date-group-{{ task['id'] }}" style="{% if not task['is_exact_date_active'] %}display: none;{% endif %}">
                             <label data-lang-key="exact_date">Exact Date</label>
                             <input type="date" name="exact_date" id="exact-date-{{ task['id'] }}" value="{{ task['exact_date'] }}" {% if not task['is_exact_date_active'] %}disabled{% endif %}>
                         </div>
@@ -139,29 +291,36 @@
                         <button type="submit" class="btn btn-primary" data-lang-key="save_changes">Save Changes</button>
                     </form>
                 </div>
+                {% endif %}
 
-                <h4 style="margin-top: 0; margin-bottom: 15px;" data-lang-key="task_history">Task History</h4>
+                {% if task['person_id'] == person['id'] %}
+                <h4 style="margin-top: 0; margin-bottom: 15px;" data-lang-key="task_history">Görev Geçmişi</h4>
                 {% for log in task['history'] %}
                 <div class="task-item" style="opacity: 0.7; box-shadow: none; border: 1px dashed #aaa; margin-bottom: 10px; flex-direction: column; align-items: flex-start;">
                     <div class="task-title" style="font-size: 1rem;">{{ log['action_name'] }} <span style="font-size: 0.8em; font-weight: normal; color: #666;">({{ log['timestamp'] }})</span></div>
                     <div class="task-meta" style="margin-top: 5px;">
-                        <span class="badge badge-{{ log['target_period_id'] }}" 
+                        <span class="badge badge-{{ log['target_period_id'] }}"
                             {% if not log['is_exact_date_active'] %}
                                 data-lang-key="{% if log['target_period_id'] == 1 %}this_week{% elif log['target_period_id'] == 2 %}next_week{% elif log['target_period_id'] == 3 %}this_month{% elif log['target_period_id'] == 4 %}uncertain_deadline{% else %}on_hold{% endif %}"
                             {% endif %}>
                             {% if log['is_exact_date_active'] %}
                                 📅 {{ log['exact_date_formatted'] }}
                             {% else %}
-                                {% if log['target_period_id'] == 1 %}This Week{% elif log['target_period_id'] == 2 %}Next Week{% elif log['target_period_id'] == 3 %}This Month{% elif log['target_period_id'] == 4 %}Uncertain Deadline{% else %}On Hold{% endif %}
+                                {% if log['target_period_id'] == 1 %}Bu Hafta{% elif log['target_period_id'] == 2 %}Gelecek Hafta{% elif log['target_period_id'] == 3 %}Bu Ay{% elif log['target_period_id'] == 4 %}Belirsiz{% else %}Beklemede{% endif %}
                             {% endif %}
                         </span>
                         <span class="badge badge-{% if log['result'] == 'Open' %}open{% else %}closed{% endif %}" data-lang-key="{% if log['result'] == 'Open' %}open{% else %}closed{% endif %}">{{ log['result'] }}</span>
-                        <span>| <strong data-lang-key="status">Status</strong>: {{ log['status'] }} </span>
+                        <span>| <strong data-lang-key="status">Durum</strong>: {{ log['status'] }} </span>
                     </div>
                 </div>
                 {% else %}
-                <p data-lang-key="no_history">No history available for this task.</p>
+                <p data-lang-key="no_history" style="color: #999;">Henüz değişiklik yapılmadı.</p>
                 {% endfor %}
+                {% else %}
+                <div style="margin-top: 15px; padding: 15px; background: #f9f9f9; border-radius: 6px; text-align: center; color: #777;">
+                    <i data-lang-key="history_hidden">Bu görevin geçmiş detaylarını sadece görev sahibi görebilir.</i>
+                </div>
+                {% endif %}
             </div>
             </div>
             {% endfor %}
@@ -211,6 +370,86 @@
                 el.style.display = 'none';
             }
         }
+        
+        function toggleDropdown(id) {
+            const listEl = document.getElementById('dropdown-list-' + id);
+            if (listEl.style.display === 'none') {
+                listEl.style.display = 'block';
+            } else {
+                listEl.style.display = 'none';
+            }
+        }
+        
+        function toggleWaitingPersonSection(id) {
+            const cb = document.getElementById('has_waiting_person_' + id);
+            const section = document.getElementById('waiting-person-section-' + id);
+            if (cb.checked) {
+                section.style.display = 'block';
+            } else {
+                section.style.display = 'none';
+                // Reset all selections inside
+                const checkboxes = section.querySelectorAll('input[type="checkbox"]');
+                checkboxes.forEach(c => {
+                    if (c.checked) {
+                        c.checked = false;
+                        c.dispatchEvent(new Event('change'));
+                    }
+                });
+            }
+        }
+        
+        function togglePersonReason(taskId, personId, personName, checkboxElem) {
+            const reasonBox = document.getElementById('reason-box-' + taskId + '-' + personId);
+            if (checkboxElem.checked) {
+                reasonBox.style.display = 'block';
+            } else {
+                reasonBox.style.display = 'none';
+                // Clear the input when unchecked
+                const input = reasonBox.querySelector('input');
+                if (input) input.value = '';
+            }
+            updateDropdownHeader(taskId);
+        }
+        
+        function updateDropdownHeader(taskId) {
+            const group = document.getElementById('waiting-person-section-' + taskId);
+            if (!group) return;
+            const checkboxes = group.querySelectorAll('input[type="checkbox"]:checked');
+            const headerSpan = group.querySelector('.dropdown-header span:first-child');
+            if (checkboxes.length === 0) {
+                headerSpan.innerText = typeof currentLang !== 'undefined' && dictionary[currentLang] ? dictionary[currentLang]['select_people'] || 'Select People...' : 'Select People...';
+                headerSpan.setAttribute('data-lang-key', 'select_people');
+            } else {
+                let names = [];
+                checkboxes.forEach(c => {
+                    names.push(c.nextElementSibling.innerText.trim());
+                });
+                headerSpan.innerText = names.join(', ');
+                headerSpan.removeAttribute('data-lang-key');
+            }
+        }
+        
+        // Initialize headers on load
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.custom-dropdown-group').forEach(group => {
+                const idMatch = group.id.match(/waiting-person-section-(.+)/);
+                if (idMatch) {
+                    updateDropdownHeader(idMatch[1]);
+                }
+            });
+        });
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const dropdownGroups = document.querySelectorAll('.custom-dropdown-group');
+            dropdownGroups.forEach(group => {
+                const header = group.querySelector('.dropdown-header');
+                const list = group.querySelector('.dropdown-list');
+                if (list && list.style.display === 'block' && !group.contains(event.target)) {
+                    list.style.display = 'none';
+                }
+            });
+        });
     </script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <script src="{{ url_for('static', filename='app.js') }}?v=12"></script>

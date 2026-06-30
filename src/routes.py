@@ -37,6 +37,14 @@ def delete_person(person_id):
     database.delete_person(person_id)
     return redirect(url_for('settings'))
 
+@app.route('/debug_tasks/<int:person_id>')
+def debug_tasks(person_id):
+    from src import database
+    tasks = database.get_tasks_by_person(person_id)
+    tasks.extend(database.get_tasks_waiting_on_person(person_id))
+    import json
+    return json.dumps([{k: v for k, v in t.items() if k in ['id', 'action_name', 'waiting_reason', 'collab_waiting_reason']} for t in tasks])
+
 @app.route('/person/<int:person_id>')
 def person_detail(person_id):
     """View tasks for a specific person."""
@@ -46,14 +54,16 @@ def person_detail(person_id):
     
     sort_mode = request.args.get('sort', 'manual')
     
-    raw_tasks = database.get_tasks_by_person(person_id, sort_mode=sort_mode)
-    tasks = []
-    for row in raw_tasks:
-        task_dict = dict(row)
-        task_dict['history'] = database.get_task_history(task_dict['id'])
-        tasks.append(task_dict)
+    tasks = database.get_tasks_by_person(person_id, sort_mode=sort_mode)
+    tasks.extend(database.get_tasks_waiting_on_person(person_id))
+    
+    # Load history for each task
+    for task in tasks:
+        task['history'] = database.get_task_history(task['id'])
         
-    return render_template('person_detail.html', person=person, tasks=tasks, current_sort=sort_mode)
+    all_people = database.get_all_people()
+        
+    return render_template('person_detail.html', person=person, tasks=tasks, current_sort=sort_mode, all_people=all_people)
 
 @app.route('/add_task/<int:person_id>', methods=['POST'])
 def add_task(person_id):
@@ -61,7 +71,7 @@ def add_task(person_id):
     action_name = request.form.get('action_name')
     status = request.form.get('status')
     target_period_id_str = request.form.get('target_period_id')
-    target_period_id = int(target_period_id_str) if target_period_id_str else 1
+    target_period_id = int(target_period_id_str) if target_period_id_str else 4
     
     # Checkbox logic
     is_exact_date_active_str = request.form.get('is_exact_date_active')
@@ -69,27 +79,62 @@ def add_task(person_id):
     
     exact_date = request.form.get('exact_date') if is_exact_date_active else None
     
+    waiting_on_person_id_strs = request.form.getlist('waiting_on_person_ids')
+    waiting_on_persons_data = []
+    for pid in waiting_on_person_id_strs:
+        if pid:
+            reason = request.form.get(f'waiting_reason_{pid}')
+            if reason and not reason.strip():
+                reason = None
+            waiting_on_persons_data.append({'id': int(pid), 'reason': reason})
+    
     sort_mode = request.form.get('sort_mode', 'manual')
     if action_name and status:
-        task_id = database.add_task(
+        database.add_task(
             person_id=person_id,
             action_name=action_name,
             status=status,
             target_period_id=target_period_id,
             is_exact_date_active=is_exact_date_active,
-            exact_date=exact_date
+            exact_date=exact_date,
+            waiting_on_persons_data=waiting_on_persons_data
         )
-        database.log_task_change(task_id, f"Task created with status: '{status}'")
     return redirect(url_for('person_detail', person_id=person_id, sort=sort_mode))
 
 @app.route('/update_task_result/<int:task_id>', methods=['POST'])
 def update_task_result(task_id):
-    """Route to toggle task result between Open and Closed."""
+    """Route to toggle task result between Open and Closed or mark waiting part as completed."""
     result = request.form.get('result')
-    person_id = request.form.get('person_id')
+    person_id_str = request.form.get('person_id')
+    person_id = int(person_id_str) if person_id_str else 1
     sort_mode = request.form.get('sort_mode', 'manual')
-    database.update_task_result(task_id, result)
-    database.log_task_change(task_id, f"Task result marked as: '{result}'")
+    
+    # Check if the person is a collaborator
+    import sqlite3
+    conn = database.get_db_connection()
+    collab = conn.execute('SELECT * FROM task_collaborators WHERE task_id = ? AND person_id = ?', (task_id, person_id)).fetchone()
+    conn.close()
+    
+    if collab:
+        # Toggling waiting_is_completed status for the awaited person
+        new_status = 1 if result == 'Closed' else 0
+        database.update_waiting_status(task_id, person_id, new_status)
+        
+        person_record = database.get_person_by_id(person_id)
+        person_name = person_record['name'] if person_record else "Bir kişi"
+        status_text = "kendi kısmını kapattı!" if new_status else "kendi kısmını yeniden açtı!"
+        
+        database.log_task_change(task_id, f"{person_name} {status_text}")
+    else:
+        # Normal task closing
+        if result == 'Closed':
+            task = database.get_task_by_id(task_id)
+            incomplete = [c['name'] for c in task.get('collaborators', []) if not c['is_completed']]
+            if incomplete:
+                return redirect(url_for('person_detail', person_id=person_id, sort=sort_mode))
+        
+        database.update_task_result(task_id, result)
+        
     return redirect(url_for('person_detail', person_id=person_id, sort=sort_mode))
 
 @app.route('/delete_task/<int:task_id>', methods=['POST'])
@@ -125,24 +170,66 @@ def edit_task(task_id):
     is_exact_date_active = 1 if request.form.get('is_exact_date_active') == 'on' else 0
     exact_date = request.form.get('exact_date') if is_exact_date_active else None
     
+    waiting_on_person_id_strs = request.form.getlist('waiting_on_person_ids')
+    waiting_on_persons_data = []
+    for pid in waiting_on_person_id_strs:
+        if pid:
+            reason = request.form.get(f'waiting_reason_{pid}')
+            if reason and not reason.strip():
+                reason = None
+            waiting_on_persons_data.append({'id': int(pid), 'reason': reason})
+    
     sort_mode = request.form.get('sort_mode', 'manual')
     
-    # Check what changed to log it
-    changes = []
-    if task['action_name'] != action_name:
-        changes.append(f"Action Name changed to '{action_name}'")
-    if task['status'] != status:
-        changes.append(f"Status changed to '{status}'")
-    if task['target_period_id'] != target_period_id:
-        changes.append(f"Target Period changed to ID {target_period_id}")
-    if task['is_exact_date_active'] != is_exact_date_active or task['exact_date'] != exact_date:
-        changes.append(f"Date setting updated")
+    # Detect if anything actually changed (to avoid unnecessary snapshots)
+    old_collabs = {c['id']: c for c in task.get('collaborators', [])}
+    new_collabs = {d['id']: d for d in waiting_on_persons_data}
+    
+    # Only compare exact_date if exact date is active on both sides
+    date_changed = task['is_exact_date_active'] != is_exact_date_active or (
+        is_exact_date_active and (task['exact_date'] or '') != (exact_date or '')
+    )
+    
+    collabs_changed = (
+        set(old_collabs.keys()) != set(new_collabs.keys())
+        or any((old_collabs[pid].get('waiting_reason') or '') != (new_collabs[pid]['reason'] or '')
+               for pid in old_collabs if pid in new_collabs)
+    )
+    
+    something_changed = (
+        task['action_name'] != action_name
+        or task['status'] != status
+        or task['target_period_id'] != target_period_id
+        or date_changed
+        or collabs_changed
+    )
+
+    if something_changed:
+        base_task_changed = (
+            task['action_name'] != action_name
+            or task['status'] != status
+            or task['target_period_id'] != target_period_id
+            or date_changed
+        )
+        custom_action = None
+        if collabs_changed:
+            if not base_task_changed:
+                custom_action = "Kişiler / Mesajlar Güncellendi"
+            else:
+                custom_action = f"{task['action_name']} (Kişiler de Güncellendi)"
+                
+        # Save snapshot of the OLD state BEFORE updating
+        database.log_task_snapshot(task, custom_action)
+        database.update_task_details(
+            task_id=task_id,
+            action_name=action_name,
+            status=status,
+            target_period_id=target_period_id,
+            is_exact_date_active=is_exact_date_active,
+            exact_date=exact_date,
+            waiting_on_persons_data=waiting_on_persons_data
+        )
         
-    if changes:
-        database.update_task_details(task_id, action_name, status, target_period_id, is_exact_date_active, exact_date)
-        for change in changes:
-            database.log_task_change(task_id, change)
-            
     return redirect(url_for('person_detail', person_id=task['person_id'], sort=sort_mode))
 
 @app.route('/export_excel')

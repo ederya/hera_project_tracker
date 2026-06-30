@@ -37,7 +37,7 @@ A lightweight, web-based task and project tracking application designed to help 
    ```
 
 4. **Access the app:**
-   Open your web browser and go to: `http://localhost:5000`
+   Open your web browser and go to: `http://localhost:5050`
 
 ## Notes
 - The database (`hera_workflow.db`) is automatically created upon the first run.

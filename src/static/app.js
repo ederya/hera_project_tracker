@@ -3,18 +3,21 @@ document.addEventListener('DOMContentLoaded', function() {
     const dateInput = document.getElementById('exact_date');
     const targetPeriodGroup = document.getElementById('target-period-group-add');
     const targetPeriodSelect = document.querySelector('#add-task-form-container .target-period-select');
+    const exactDateGroupAdd = document.getElementById('exact-date-group-add');
     
     if (dateCheckbox && dateInput) {
         // Initial state
         dateInput.disabled = !dateCheckbox.checked;
         if (targetPeriodSelect) targetPeriodSelect.disabled = dateCheckbox.checked;
         if (targetPeriodGroup) targetPeriodGroup.style.display = dateCheckbox.checked ? 'none' : 'block';
+        if (exactDateGroupAdd) exactDateGroupAdd.style.display = dateCheckbox.checked ? 'block' : 'none';
         
         // On change
         dateCheckbox.addEventListener('change', function() {
             dateInput.disabled = !this.checked;
             if (targetPeriodSelect) targetPeriodSelect.disabled = this.checked;
             if (targetPeriodGroup) targetPeriodGroup.style.display = this.checked ? 'none' : 'block';
+            if (exactDateGroupAdd) exactDateGroupAdd.style.display = this.checked ? 'block' : 'none';
             if (!this.checked) {
                 dateInput.value = ''; // clear value if disabled
             }
@@ -29,12 +32,17 @@ document.addEventListener('DOMContentLoaded', function() {
         const selectTarget = document.getElementById(selectTargetId);
         const groupTargetId = cb.getAttribute('data-group-target');
         const groupTarget = document.getElementById(groupTargetId);
+        const dateGroupId = cb.getAttribute('data-date-group');
+        const dateGroup = document.getElementById(dateGroupId);
         
         if (selectTarget) {
             selectTarget.disabled = cb.checked;
         }
         if (groupTarget) {
             groupTarget.style.display = cb.checked ? 'none' : 'block';
+        }
+        if (dateGroup) {
+            dateGroup.style.display = cb.checked ? 'block' : 'none';
         }
 
         cb.addEventListener('change', function() {
@@ -46,6 +54,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             if (groupTarget) {
                 groupTarget.style.display = this.checked ? 'none' : 'block';
+            }
+            if (dateGroup) {
+                dateGroup.style.display = this.checked ? 'block' : 'none';
             }
             if (targetInput) {
                 targetInput.disabled = !this.checked;
@@ -156,7 +167,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 'sort_by': 'Sort By:',
                 'sort_priority': 'By Date Priority',
                 'sort_manual': 'Custom',
-                'exact_date_badge': 'Exact Date'
+                'exact_date_badge': 'Exact Date',
+                'has_waiting_person': 'Is there a waiting person?',
+                'waiting_on_person': 'Waiting On Person',
+                'none': '-- None --',
+                'tasks_waiting_on_you': 'Tasks Waiting On You',
+                'owner': 'Owner',
+                'waiting_on_you_text': 'Waiting on You!',
+                'waiting_for': 'Waiting for',
+                'waiting_reason': 'Waiting Reason',
+                'waiting_reason_placeholder': 'Why are you waiting?',
+                'waiting_completed': 'completed their part!',
+                'select_people': 'Select People...',
+                'cannot_close_task': 'Cannot close task! Waiting for: ',
+                'people_exist': 'people exist'
             },
             'TR': {
                 'dashboard_title': 'Hera Proje Takip Sistemi',
@@ -203,7 +227,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 'sort_by': 'Sıralama:',
                 'sort_priority': 'Tarih Önceliğine Göre',
                 'sort_manual': 'Özel',
-                'exact_date_badge': 'Kesin Tarih'
+                'exact_date_badge': 'Kesin Tarih',
+                'has_waiting_person': 'Beklenen kişi var mı?',
+                'waiting_on_person': 'Beklenen Kişi',
+                'none': '-- Yok --',
+                'tasks_waiting_on_you': 'Seni Bekleyen Görevler',
+                'owner': 'İşin Sahibi',
+                'waiting_on_you_text': 'Seni Bekliyor!',
+                'waiting_for': 'Bekleniyor:',
+                'waiting_reason': 'Bekleme Sebebi',
+                'waiting_reason_placeholder': 'Neden bekliyorsunuz?',
+                'waiting_completed': 'beklenen kısmı kapattı!',
+                'select_people': 'Kişileri Seç...',
+                'cannot_close_task': 'Görev kapatılamıyor! Beklenen: ',
+                'people_exist': 'kişi mevcut'
             }
         };
 
@@ -248,6 +285,13 @@ document.addEventListener('DOMContentLoaded', function() {
         // Close Task Confirmation
         document.querySelectorAll('.close-task-form').forEach(form => {
             form.addEventListener('submit', function(e) {
+                const incomplete = form.getAttribute('data-incomplete-names');
+                if (incomplete && incomplete.trim() !== '') {
+                    alert(dictionary[currentLang]['cannot_close_task'] + incomplete);
+                    e.preventDefault();
+                    return;
+                }
+                
                 if (!confirm(dictionary[currentLang]['confirm_close_msg'])) {
                     e.preventDefault();
                 }
@@ -279,6 +323,15 @@ document.addEventListener('DOMContentLoaded', function() {
             toggleAddTaskBtn.addEventListener('click', function() {
                 if (addTaskFormContainer.style.display === 'none') {
                     addTaskFormContainer.style.display = 'block';
+                    
+                    // Reset add form specific fields when opened
+                    const hasWaitingPersonAdd = document.getElementById('has_waiting_person_add');
+                    if (hasWaitingPersonAdd) {
+                        hasWaitingPersonAdd.checked = false;
+                        if (typeof toggleWaitingPersonSection === 'function') {
+                            toggleWaitingPersonSection('add');
+                        }
+                    }
                 } else {
                     addTaskFormContainer.style.display = 'none';
                 }

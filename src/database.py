@@ -34,7 +34,9 @@ def init_db():
             is_exact_date_active BOOLEAN NOT NULL DEFAULT 0,
             exact_date DATE,
             result TEXT NOT NULL DEFAULT 'Open',
-            FOREIGN KEY (person_id) REFERENCES people (id)
+            waiting_on_person_id INTEGER,
+            FOREIGN KEY (person_id) REFERENCES people (id),
+            FOREIGN KEY (waiting_on_person_id) REFERENCES people (id)
         )
     ''')
     
@@ -49,6 +51,7 @@ def init_db():
             is_exact_date_active BOOLEAN NOT NULL DEFAULT 0,
             exact_date DATE,
             result TEXT NOT NULL,
+            waiting_on_person_id INTEGER,
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (task_id) REFERENCES tasks (id) ON DELETE CASCADE
         )
@@ -131,21 +134,42 @@ def get_tasks_by_person(person_id, sort_mode='manual'):
     conn = get_db_connection()
     
     if sort_mode == 'priority':
-        order_clause = 'CASE WHEN exact_date IS NULL THEN 1 ELSE 0 END, exact_date ASC, target_period_id ASC, sort_order ASC, id DESC'
+        order_clause = 'CASE WHEN tasks.exact_date IS NULL THEN 1 ELSE 0 END, tasks.exact_date ASC, tasks.target_period_id ASC, tasks.sort_order ASC, tasks.id DESC'
     else: # manual
-        order_clause = 'sort_order ASC, id DESC'
+        order_clause = 'tasks.sort_order ASC, tasks.id DESC'
         
     raw_tasks = conn.execute(f'''
-        SELECT * FROM tasks 
-        WHERE person_id = ? 
+        SELECT tasks.*, p1.name as owner_name 
+        FROM tasks 
+        JOIN people p1 ON tasks.person_id = p1.id
+        WHERE tasks.person_id = ?
         ORDER BY {order_clause}
     ''', (person_id,)).fetchall()
+    
+    task_ids = [str(r['id']) for r in raw_tasks]
+    collaborators_by_task = {}
+    if task_ids:
+        placeholders = ','.join('?' * len(task_ids))
+        collabs = conn.execute(f'''
+            SELECT tc.task_id, tc.person_id, tc.is_completed, tc.waiting_reason, p.name 
+            FROM task_collaborators tc
+            JOIN people p ON tc.person_id = p.id
+            WHERE tc.task_id IN ({placeholders})
+        ''', task_ids).fetchall()
+        for c in collabs:
+            tid = c['task_id']
+            if tid not in collaborators_by_task:
+                collaborators_by_task[tid] = []
+            collaborators_by_task[tid].append({'id': c['person_id'], 'name': c['name'], 'is_completed': c['is_completed'], 'waiting_reason': c['waiting_reason']})
     
     tasks = []
     for row in raw_tasks:
         task = dict(row)
-        task['target_period_id'] = _get_dynamic_period(task['exact_date'], task['target_period_id'])
-        if task['exact_date']:
+        task['collaborators'] = collaborators_by_task.get(task['id'], [])
+        # Only recalculate period dynamically when user set an explicit exact date
+        if task['is_exact_date_active']:
+            task['target_period_id'] = _get_dynamic_period(task['exact_date'], task['target_period_id'])
+        if task['is_exact_date_active'] and task['exact_date']:
             try:
                 task['exact_date_formatted'] = datetime.strptime(task['exact_date'], '%Y-%m-%d').strftime('%d.%m.%Y')
             except ValueError:
@@ -161,25 +185,46 @@ def get_all_tasks_with_people():
     """Retrieves all tasks joined with people names (useful for Excel export)."""
     conn = get_db_connection()
     raw_data = conn.execute('''
-        SELECT t.*, p.name as person_name 
+        SELECT t.*, p.name as person_name
         FROM tasks t
         JOIN people p ON t.person_id = p.id
         ORDER BY p.name ASC, CASE WHEN t.exact_date IS NULL THEN 1 ELSE 0 END, t.exact_date ASC
     ''').fetchall()
+    
+    task_ids = [str(r['id']) for r in raw_data]
+    collaborators_by_task = {}
+    if task_ids:
+        placeholders = ','.join('?' * len(task_ids))
+        collabs = conn.execute(f'''
+            SELECT tc.task_id, tc.person_id, tc.is_completed, tc.waiting_reason, p.name 
+            FROM task_collaborators tc
+            JOIN people p ON tc.person_id = p.id
+            WHERE tc.task_id IN ({placeholders})
+        ''', task_ids).fetchall()
+        for c in collabs:
+            tid = c['task_id']
+            if tid not in collaborators_by_task:
+                collaborators_by_task[tid] = []
+            collaborators_by_task[tid].append({'id': c['person_id'], 'name': c['name'], 'is_completed': c['is_completed'], 'waiting_reason': c['waiting_reason']})
+    
     conn.close()
     
     data = []
     for row in raw_data:
         task = dict(row)
+        task['collaborators'] = collaborators_by_task.get(task['id'], [])
         task['target_period_id'] = _get_dynamic_period(task['exact_date'], task['target_period_id'])
         data.append(task)
         
     return data
 
-def add_task(person_id, action_name, status, target_period_id, is_exact_date_active, exact_date):
+def add_task(person_id, action_name, status, target_period_id, is_exact_date_active, exact_date, waiting_on_persons_data=None):
     """Adds a new task for a specific person."""
     if not is_exact_date_active:
         exact_date = _calculate_auto_exact_date(target_period_id)
+        
+    if waiting_on_persons_data is None:
+        waiting_on_persons_data = []
         
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -188,6 +233,13 @@ def add_task(person_id, action_name, status, target_period_id, is_exact_date_act
         VALUES (?, ?, ?, ?, ?, ?)
     ''', (person_id, action_name, status, target_period_id, is_exact_date_active, exact_date))
     task_id = cursor.lastrowid
+    
+    for item in waiting_on_persons_data:
+        cursor.execute('''
+            INSERT INTO task_collaborators (task_id, person_id, is_completed, waiting_reason)
+            VALUES (?, ?, 0, ?)
+        ''', (task_id, item['id'], item.get('reason')))
+        
     conn.commit()
     conn.close()
     return task_id
@@ -199,11 +251,18 @@ def update_task_result(task_id, result):
     if old_task:
         conn.execute('''
             INSERT INTO task_history 
-            (task_id, action_name, status, target_period_id, is_exact_date_active, exact_date, result) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            (task_id, action_name, status, target_period_id, is_exact_date_active, exact_date, result, waiting_on_person_id) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ''', (old_task['id'], old_task['action_name'], old_task['status'], old_task['target_period_id'], 
-              old_task['is_exact_date_active'], old_task['exact_date'], old_task['result']))
+              old_task['is_exact_date_active'], old_task['exact_date'], old_task['result'], old_task['waiting_on_person_id']))
     conn.execute('UPDATE tasks SET result = ? WHERE id = ?', (result, task_id))
+    conn.commit()
+    conn.close()
+
+def update_waiting_status(task_id, person_id, is_completed):
+    """Updates the waiting status (completed or not) for a specific awaited person."""
+    conn = get_db_connection()
+    conn.execute('UPDATE task_collaborators SET is_completed = ? WHERE task_id = ? AND person_id = ?', (is_completed, task_id, person_id))
     conn.commit()
     conn.close()
 
@@ -243,25 +302,40 @@ def delete_person(person_id):
     conn.close()
 
 def get_task_by_id(task_id):
-    """Retrieves a single task by ID."""
+    """Retrieves a single task by ID, including its collaborators."""
     conn = get_db_connection()
-    task = conn.execute('SELECT * FROM tasks WHERE id = ?', (task_id,)).fetchone()
+    row = conn.execute('SELECT * FROM tasks WHERE id = ?', (task_id,)).fetchone()
+    if not row:
+        conn.close()
+        return None
+        
+    task = dict(row)
+    collabs = conn.execute('''
+        SELECT tc.person_id, p.name, tc.is_completed, tc.waiting_reason
+        FROM task_collaborators tc
+        JOIN people p ON tc.person_id = p.id
+        WHERE tc.task_id = ?
+    ''', (task_id,)).fetchall()
+    
+    task['collaborators'] = []
+    for c in collabs:
+        task['collaborators'].append({
+            'id': c['person_id'], 
+            'name': c['name'], 
+            'is_completed': c['is_completed'], 
+            'waiting_reason': c['waiting_reason']
+        })
+        
     conn.close()
     return task
 
-def update_task_details(task_id, action_name, status, target_period_id, is_exact_date_active, exact_date):
-    """Updates the details of a task and logs the change."""
+def update_task_details(task_id, action_name, status, target_period_id, is_exact_date_active, exact_date, waiting_on_persons_data=None):
+    """Updates the details of a task."""
+    if waiting_on_persons_data is None:
+        waiting_on_persons_data = []
+        
     conn = get_db_connection()
-    # First get current state to save in history
-    old_task = conn.execute('SELECT * FROM tasks WHERE id = ?', (task_id,)).fetchone()
-    if old_task:
-        conn.execute('''
-            INSERT INTO task_history 
-            (task_id, action_name, status, target_period_id, is_exact_date_active, exact_date, result) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (old_task['id'], old_task['action_name'], old_task['status'], old_task['target_period_id'], 
-              old_task['is_exact_date_active'], old_task['exact_date'], old_task['result']))
-              
+        
     if not is_exact_date_active:
         exact_date = _calculate_auto_exact_date(target_period_id)
         
@@ -270,29 +344,121 @@ def update_task_details(task_id, action_name, status, target_period_id, is_exact
         SET action_name = ?, status = ?, target_period_id = ?, is_exact_date_active = ?, exact_date = ?
         WHERE id = ?
     ''', (action_name, status, target_period_id, is_exact_date_active, exact_date, task_id))
+    
+    # We clear and re-insert collaborators if the list changed.
+    # Enforce rule: incomplete collaborators cannot be removed.
+    existing_collabs = conn.execute('SELECT person_id, is_completed, waiting_reason FROM task_collaborators WHERE task_id = ?', (task_id,)).fetchall()
+    existing_dict = {c['person_id']: c for c in existing_collabs}
+    
+    conn.execute('DELETE FROM task_collaborators WHERE task_id = ?', (task_id,))
+    
+    new_pid_set = {item['id'] for item in waiting_on_persons_data}
+    
+    # First, re-add any existing incomplete collabs that were missing from input
+    for pid, c in existing_dict.items():
+        if pid not in new_pid_set and not c['is_completed']:
+            waiting_on_persons_data.append({'id': pid, 'reason': c['waiting_reason']})
+    
+    for item in waiting_on_persons_data:
+        pid = item['id']
+        reason = item.get('reason')
+        # Keep old completed status if they were already here, else 0
+        is_completed = existing_dict[pid]['is_completed'] if pid in existing_dict else 0
+        conn.execute('''
+            INSERT INTO task_collaborators (task_id, person_id, is_completed, waiting_reason)
+            VALUES (?, ?, ?, ?)
+        ''', (task_id, pid, is_completed, reason))
+        
+    conn.commit()
+    conn.close()
+
+def log_task_snapshot(task_dict, custom_action_name=None):
+    """Saves the current task state as a history snapshot. If custom_action_name is provided, uses it instead of task name."""
+    action_val = custom_action_name if custom_action_name else task_dict['action_name']
+    conn = get_db_connection()
+    conn.execute('''
+        INSERT INTO task_history 
+        (task_id, action_name, status, target_period_id, is_exact_date_active, exact_date, result, waiting_on_person_id) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (task_dict['id'], action_val, task_dict['status'], task_dict['target_period_id'], 
+          task_dict['is_exact_date_active'], task_dict['exact_date'], task_dict['result'], task_dict.get('waiting_on_person_id')))
     conn.commit()
     conn.close()
 
 def log_task_change(task_id, description):
-    """Deprecated: using task_history instead."""
-    pass
+    """Legacy: logs a named event (e.g. 'kendi kismini kapatti') as a history entry."""
+    conn = get_db_connection()
+    old_task = conn.execute('SELECT * FROM tasks WHERE id = ?', (task_id,)).fetchone()
+    if old_task:
+        conn.execute('''
+            INSERT INTO task_history 
+            (task_id, action_name, status, target_period_id, is_exact_date_active, exact_date, result, waiting_on_person_id) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (old_task['id'], description, old_task['status'], old_task['target_period_id'], 
+              old_task['is_exact_date_active'], old_task['exact_date'], old_task['result'], old_task['waiting_on_person_id']))
+        conn.commit()
+    conn.close()
 
 def get_task_history(task_id):
     """Retrieves the history snapshots of a specific task."""
     conn = get_db_connection()
-    raw_logs = conn.execute('SELECT * FROM task_history WHERE task_id = ? ORDER BY timestamp DESC', (task_id,)).fetchall()
+    raw_logs = conn.execute('''
+        SELECT th.*, p2.name as waiting_on_person_name
+        FROM task_history th
+        LEFT JOIN people p2 ON th.waiting_on_person_id = p2.id
+        WHERE th.task_id = ? 
+        ORDER BY th.timestamp DESC
+    ''', (task_id,)).fetchall()
     conn.close()
     
     logs = []
     for row in raw_logs:
         log = dict(row)
-        if log['exact_date']:
+        # Only format exact_date if it was explicitly active at snapshot time
+        if log['is_exact_date_active'] and log['exact_date']:
             try:
                 log['exact_date_formatted'] = datetime.strptime(log['exact_date'], '%Y-%m-%d').strftime('%d.%m.%Y')
             except ValueError:
                 log['exact_date_formatted'] = log['exact_date']
         else:
             log['exact_date_formatted'] = None
+        # Convert UTC timestamp to Turkey time (UTC+3) and format as DD.MM.YYYY HH:MM
+        try:
+            ts = datetime.strptime(log['timestamp'], '%Y-%m-%d %H:%M:%S')
+            ts = ts + timedelta(hours=3)
+            log['timestamp'] = ts.strftime('%d.%m.%Y %H:%M')
+        except (ValueError, TypeError):
+            pass
         logs.append(log)
         
     return logs
+
+def get_tasks_waiting_on_person(person_id):
+    """Retrieves all open tasks where the given person is marked as the waiting_on_person."""
+    conn = get_db_connection()
+    raw_tasks = conn.execute('''
+        SELECT tasks.*, p1.name as owner_name, tc.waiting_reason as collab_waiting_reason, tc.is_completed as waiting_is_completed
+        FROM tasks 
+        JOIN people p1 ON tasks.person_id = p1.id
+        JOIN task_collaborators tc ON tasks.id = tc.task_id
+        WHERE tc.person_id = ? AND tasks.result = 'Open' AND tc.is_completed = 0
+        ORDER BY tasks.target_period_id ASC, tasks.id DESC
+    ''', (person_id,)).fetchall()
+    
+    tasks = []
+    for row in raw_tasks:
+        task = dict(row)
+        task['waiting_reason'] = row['collab_waiting_reason']
+        if task['is_exact_date_active']:
+            task['target_period_id'] = _get_dynamic_period(task['exact_date'], task['target_period_id'])
+        if task['is_exact_date_active'] and task['exact_date']:
+            try:
+                task['exact_date_formatted'] = datetime.strptime(task['exact_date'], '%Y-%m-%d').strftime('%d.%m.%Y')
+            except ValueError:
+                task['exact_date_formatted'] = task['exact_date']
+        else:
+            task['exact_date_formatted'] = None
+        tasks.append(task)
+        
+    conn.close()
+    return tasks

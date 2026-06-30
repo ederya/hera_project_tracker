@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tasks - Ersin</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .dropdown-header {
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-color);
+        }
+        .dropdown-list {
+            border: 1px solid var(--border-color);
+            border-top: none;
+            max-height: 200px;
+            overflow-y: auto;
+            border-bottom-left-radius: 4px;
+            border-bottom-right-radius: 4px;
+            background: var(--bg-color);
+            width: 100%;
+        }
+        .dropdown-item {
+            padding: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .dropdown-item:last-child {
+            border-bottom: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><span data-lang-key="tasks_for">Tasks for</span> Ersin</h1>
+            <div class="header-actions">
+                <a href="/" class="btn btn-secondary" data-lang-key="back_to_dashboard">Back to Dashboard</a>
+                <button id="toggle-add-task-btn" class="btn btn-primary" data-lang-key="add_task_btn">Add Task</button>
+                <button id="toggle-completed-btn" class="btn btn-info" data-lang-key="show_completed_tasks">Completed Tasks</button>
+            </div>
+        </header>
+
+        <div id="add-task-form-container" class="form-card" style="display: none;">
+            <h2 data-lang-key="add_new_task">Add New Task</h2>
+            <form action="/add_task/10" method="POST" style="margin-top: 15px;">
+                <input type="hidden" name="sort_mode" value="manual">
+                <div class="form-group">
+                    <label data-lang-key="action_name">Action Name</label>
+                    <input type="text" name="action_name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label data-lang-key="status">Status</label>
+                    <input type="text" name="status" required>
+                </div>
+                
+                <div class="form-group" id="target-period-group-add">
+                    <label data-lang-key="target_period">Target Period</label>
+                    <select name="target_period_id" class="target-period-select" required>
+                        <option value="1" data-lang-key="this_week">This Week</option>
+                        <option value="2" data-lang-key="next_week">Next Week</option>
+                        <option value="3" data-lang-key="this_month">This Month</option>
+                        <option value="4" data-lang-key="uncertain_deadline">Uncertain Deadline</option>
+                        <option value="5" data-lang-key="on_hold">On Hold</option>
+                    </select>
+                </div>
+                
+                <div class="form-group checkbox-group" style="margin-bottom: 10px;">
+                    <input type="checkbox" id="has_waiting_person_add" onchange="toggleWaitingPersonSection('add')">
+                    <label for="has_waiting_person_add" data-lang-key="has_waiting_person" style="margin:0;">Beklenen Kişi Var Mı?</label>
+                </div>
+                
+                <div class="form-group custom-dropdown-group" id="waiting-person-section-add" style="position: relative; display: none;">
+                    <label data-lang-key="waiting_on_person">Waiting On Person</label>
+                    <div class="dropdown-header" onclick="toggleDropdown('add')">
+                        <span data-lang-key="select_people">Select People...</span>
+                        <span class="dropdown-arrow">▼</span>
+                    </div>
+                    <div id="dropdown-list-add" class="dropdown-list" style="display: none;">
+                        
+                            
+                                <div class="dropdown-item">
+                                    <label style="display: flex; align-items: center; margin-bottom: 0; font-weight: normal; cursor: pointer;">
+                                        <input type="checkbox" name="waiting_on_person_ids" value="7" data-id="add" onchange="togglePersonReason('add', '7', 'Ahmet Kalaycı', this)"> 
+                                        <span style="margin-left: 8px;">Ahmet Kalaycı</span>
+                                    </label>
+                                    <div id="reason-box-add-7" style="display: none; margin-top: 10px; padding-left: 20px;">
+                                        <input type="text" name="waiting_reason_7" data-lang-key="waiting_reason_placeholder" placeholder="Why are you waiting?" style="width: 100%; padding: 6px; font-size: 0.9em;">
+                                    </div>
+                                </div>
+                            
+                        
+                            
+                                <div class="dropdown-item">
+                                    <label style="display: flex; align-items: center; margin-bottom: 0; font-weight: normal; cursor: pointer;">
+                                        <input type="checkbox" name="waiting_on_person_ids" value="1" data-id="add" onchange="togglePersonReason('add', '1', 'Emirhan Derya', this)"> 
+                                        <span style="margin-left: 8px;">Emirhan Derya</span>
+                                    </label>
+                                    <div id="reason-box-add-1" style="display: none; margin-top: 10px; padding-left: 20px;">
+                                        <input type="text" name="waiting_reason_1" data-lang-key="waiting_reason_placeholder" placeholder="Why are you waiting?" style="width: 100%; padding: 6px; font-size: 0.9em;">
+                                    </div>
+                                </div>
+                            
+                        
+                            
+                                <div class="dropdown-item">
+                                    <label style="display: flex; align-items: center; margin-bottom: 0; font-weight: normal; cursor: pointer;">
+                                        <input type="checkbox" name="waiting_on_person_ids" value="6" data-id="add" onchange="togglePersonReason('add', '6', 'Erhan Özcan', this)"> 
+                                        <span style="margin-left: 8px;">Erhan Özcan</span>
+                                    </label>
+                                    <div id="reason-box-add-6" style="display: none; margin-top: 10px; padding-left: 20px;">
+                                        <input type="text" name="waiting_reason_6" data-lang-key="waiting_reason_placeholder" placeholder="Why are you waiting?" style="width: 100%; padding: 6px; font-size: 0.9em;">
+                                    </div>
+                                </div>
+                            
+                        
+                            
+                        
+                            
+                                <div class="dropdown-item">
+                                    <label style="display: flex; align-items: center; margin-bottom: 0; font-weight: normal; cursor: pointer;">
+                                        <input type="checkbox" name="waiting_on_person_ids" value="2" data-id="add" onchange="togglePersonReason('add', '2', 'Miraç Kaya', this)"> 
+                                        <span style="margin-left: 8px;">Miraç Kaya</span>
+                                    </label>
+                                    <div id="reason-box-add-2" style="display: none; margin-top: 10px; padding-left: 20px;">
+                                        <input type="text" name="waiting_reason_2" data-lang-key="waiting_reason_placeholder" placeholder="Why are you waiting?" style="width: 100%; padding: 6px; font-size: 0.9em;">
+                                    </div>
+                                </div>
+                            
+                        
+                            
+                                <div class="dropdown-item">
+                                    <label style="display: flex; align-items: center; margin-bottom: 0; font-weight: normal; cursor: pointer;">
+                                        <input type="checkbox" name="waiting_on_person_ids" value="8" data-id="add" onchange="togglePersonReason('add', '8', 'Muhammet Aykut', this)"> 
+                                        <span style="margin-left: 8px;">Muhammet Aykut</span>
+                                    </label>
+                                    <div id="reason-box-add-8" style="display: none; margin-top: 10px; padding-left: 20px;">
+                                        <input type="text" name="waiting_reason_8" data-lang-key="waiting_reason_placeholder" placeholder="Why are you waiting?" style="width: 100%; padding: 6px; font-size: 0.9em;">
+                                    </div>
+                                </div>
+                            
+                        
+                            
+                                <div class="dropdown-item">
+                                    <label style="display: flex; align-items: center; margin-bottom: 0; font-weight: normal; cursor: pointer;">
+                                        <input type="checkbox" name="waiting_on_person_ids" value="5" data-id="add" onchange="togglePersonReason('add', '5', 'Yusuf Kaya', this)"> 
+                                        <span style="margin-left: 8px;">Yusuf Kaya</span>
+                                    </label>
+                                    <div id="reason-box-add-5" style="display: none; margin-top: 10px; padding-left: 20px;">
+                                        <input type="text" name="waiting_reason_5" data-lang-key="waiting_reason_placeholder" placeholder="Why are you waiting?" style="width: 100%; padding: 6px; font-size: 0.9em;">
+                                    </div>
+                                </div>
+                            
+                        
+                            
+                                <div class="dropdown-item">
+                                    <label style="display: flex; align-items: center; margin-bottom: 0; font-weight: normal; cursor: pointer;">
+                                        <input type="checkbox" name="waiting_on_person_ids" value="9" data-id="add" onchange="togglePersonReason('add', '9', 'Yusufcan Durna', this)"> 
+                                        <span style="margin-left: 8px;">Yusufcan Durna</span>
+                                    </label>
+                                    <div id="reason-box-add-9" style="display: none; margin-top: 10px; padding-left: 20px;">
+                                        <input type="text" name="waiting_reason_9" data-lang-key="waiting_reason_placeholder" placeholder="Why are you waiting?" style="width: 100%; padding: 6px; font-size: 0.9em;">
+                                    </div>
+                                </div>
+                            
+                        
+                    </div>
+                </div>
+                
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="is_exact_date_active" name="is_exact_date_active">
+                    <label for="is_exact_date_active" data-lang-key="has_exact_date" style="margin:0;">Has Exact Date?</label>
+                </div>
+                
+                <div class="form-group" id="exact-date-group-add" style="display: none;">
+                    <label data-lang-key="exact_date">Exact Date</label>
+                    <input type="date" id="exact_date" name="exact_date" disabled>
+                </div>
+                
+                <button type="submit" class="btn btn-primary" data-lang-key="add">Add</button>
+            </form>
+        </div>
+
+        
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 30px; margin-bottom: 15px;">
+            <h2 data-lang-key="open_tasks" style="margin: 0; color: var(--primary-color);">Open Tasks</h2>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <label data-lang-key="sort_by" style="font-weight: bold; margin: 0;">Sort By:</label>
+                <select id="task-sort-select" style="padding: 5px; border-radius: 4px; border: 1px solid var(--border-color);">
+                    <option value="manual" selected data-lang-key="sort_manual">Manual (Drag & Drop)</option>
+                    <option value="priority"  data-lang-key="sort_priority">Priority</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="task-list" id="open-tasks-container">
+            
+            
+        
+            
+            <p data-lang-key="no_tasks">No tasks found for this person.</p>
+            
+        </div>
+
+        <div class="task-list" id="completed-tasks-container" style="display: none;">
+            
+            
+        
+        </div>
+    </div>
+    
+    <script>
+        function toggleTaskDetail(id, editFormId) {
+            const el = document.getElementById(id);
+            if (el.style.display === 'none') {
+                el.style.display = 'block';
+            } else {
+                el.style.display = 'none';
+                if (editFormId) {
+                    document.getElementById(editFormId).style.display = 'none';
+                }
+            }
+        }
+        
+        function toggleEditForm(id) {
+            const el = document.getElementById(id);
+            if (el.style.display === 'none') {
+                el.style.display = 'block';
+            } else {
+                el.style.display = 'none';
+            }
+        }
+        
+        function toggleDropdown(id) {
+            const listEl = document.getElementById('dropdown-list-' + id);
+            if (listEl.style.display === 'none') {
+                listEl.style.display = 'block';
+            } else {
+                listEl.style.display = 'none';
+            }
+        }
+        
+        function toggleWaitingPersonSection(id) {
+            const cb = document.getElementById('has_waiting_person_' + id);
+            const section = document.getElementById('waiting-person-section-' + id);
+            if (cb.checked) {
+                section.style.display = 'block';
+            } else {
+                section.style.display = 'none';
+                // Reset all selections inside
+                const checkboxes = section.querySelectorAll('input[type="checkbox"]');
+                checkboxes.forEach(c => {
+                    if (c.checked) {
+                        c.checked = false;
+                        c.dispatchEvent(new Event('change'));
+                    }
+                });
+            }
+        }
+        
+        function togglePersonReason(taskId, personId, personName, checkboxElem) {
+            const reasonBox = document.getElementById('reason-box-' + taskId + '-' + personId);
+            if (checkboxElem.checked) {
+                reasonBox.style.display = 'block';
+            } else {
+                reasonBox.style.display = 'none';
+                // Clear the input when unchecked
+                const input = reasonBox.querySelector('input');
+                if (input) input.value = '';
+            }
+            updateDropdownHeader(taskId);
+        }
+        
+        function updateDropdownHeader(taskId) {
+            const group = document.getElementById('waiting-person-section-' + taskId);
+            if (!group) return;
+            const checkboxes = group.querySelectorAll('input[type="checkbox"]:checked');
+            const headerSpan = group.querySelector('.dropdown-header span:first-child');
+            if (checkboxes.length === 0) {
+                headerSpan.innerText = typeof currentLang !== 'undefined' && dictionary[currentLang] ? dictionary[currentLang]['select_people'] || 'Select People...' : 'Select People...';
+                headerSpan.setAttribute('data-lang-key', 'select_people');
+            } else {
+                let names = [];
+                checkboxes.forEach(c => {
+                    names.push(c.nextElementSibling.innerText.trim());
+                });
+                headerSpan.innerText = names.join(', ');
+                headerSpan.removeAttribute('data-lang-key');
+            }
+        }
+        
+        // Initialize headers on load
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.custom-dropdown-group').forEach(group => {
+                const idMatch = group.id.match(/waiting-person-section-(.+)/);
+                if (idMatch) {
+                    updateDropdownHeader(idMatch[1]);
+                }
+            });
+        });
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const dropdownGroups = document.querySelectorAll('.custom-dropdown-group');
+            dropdownGroups.forEach(group => {
+                const header = group.querySelector('.dropdown-header');
+                const list = group.querySelector('.dropdown-list');
+                if (list && list.style.display === 'block' && !group.contains(event.target)) {
+                    list.style.display = 'none';
+                }
+            });
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script src="/static/app.js?v=12"></script>
+</body>
+</html>
