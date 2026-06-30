@@ -141,14 +141,14 @@
                     {% if task['person_id'] != person['id'] %}
                         {# Bu görev bu kişiden bekleniyor #}
                         <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
-                            <div style="display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, rgba(255,193,7,0.15), rgba(255,193,7,0.05)); border: 1px solid rgba(255,193,7,0.5); color: #856404; padding: 5px 14px; border-radius: 20px; font-size: 0.85em; white-space: nowrap;">
+                            <div style="display: inline-flex; align-items: center; gap: 6px; background: var(--warning-bg); border: 1px solid rgba(251,191,36,0.3); color: var(--warning-color); padding: 5px 14px; border-radius: 20px; font-size: 0.85em; white-space: nowrap;">
                                 ⏳ <strong>{{ task['owner_name'] }}</strong> bekliyor
                             </div>
-                            <div style="font-size: 0.78em; font-weight: normal; color: #999; white-space: nowrap;">
-                                İşin Sahibi: <strong style="color: var(--text-color);">{{ task['owner_name'] }}</strong>
+                            <div style="font-size: 0.78em; font-weight: normal; color: var(--text-secondary); white-space: nowrap;">
+                                İşin Sahibi: <strong style="color: var(--text-primary);">{{ task['owner_name'] }}</strong>
                             </div>
                             {% if task['waiting_reason'] %}
-                            <div style="margin-top: 2px; font-size: 0.82em; font-weight: normal; color: #666; font-style: italic; word-break: break-word; white-space: normal; max-width: 200px; line-height: 1.4; text-align: center;">
+                            <div style="margin-top: 2px; font-size: 0.82em; font-weight: normal; color: var(--text-secondary); font-style: italic; word-break: break-word; white-space: normal; max-width: 200px; line-height: 1.4; text-align: center;">
                                 {{ task['waiting_reason'] }}
                             </div>
                             {% endif %}
@@ -158,15 +158,15 @@
                         <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
                         {% for collab in task['collaborators'] %}
                             {% if collab['is_completed'] %}
-                                <div style="display: inline-flex; align-items: center; gap: 5px; background: rgba(40,167,69,0.1); border: 1px solid rgba(40,167,69,0.4); color: #155724; padding: 4px 12px; border-radius: 20px; font-size: 0.82em; white-space: nowrap;">
+                                <div style="display: inline-flex; align-items: center; gap: 5px; background: var(--success-bg); border: 1px solid rgba(16,185,129,0.3); color: var(--success-color); padding: 4px 12px; border-radius: 20px; font-size: 0.82em; white-space: nowrap;">
                                     ✅ {{ collab['name'] }} <span data-lang-key="waiting_completed" style="font-weight:normal;">tamamladı</span>
                                 </div>
                             {% else %}
-                                <div style="display: inline-flex; align-items: center; gap: 5px; background: linear-gradient(135deg, rgba(255,193,7,0.15), rgba(255,193,7,0.05)); border: 1px solid rgba(255,193,7,0.5); color: #856404; padding: 4px 12px; border-radius: 20px; font-size: 0.82em; white-space: nowrap;">
+                                <div style="display: inline-flex; align-items: center; gap: 5px; background: var(--warning-bg); border: 1px solid rgba(251,191,36,0.3); color: var(--warning-color); padding: 4px 12px; border-radius: 20px; font-size: 0.82em; white-space: nowrap;">
                                     ⏳ <strong>{{ collab['name'] }}</strong> bekleniyor
                                 </div>
                                 {% if collab['waiting_reason'] %}
-                                <div style="font-size: 0.8em; font-weight: normal; color: #666; font-style: italic; word-break: break-word; white-space: normal; max-width: 200px; line-height: 1.4; text-align: center;">
+                                <div style="font-size: 0.8em; font-weight: normal; color: var(--text-secondary); font-style: italic; word-break: break-word; white-space: normal; max-width: 200px; line-height: 1.4; text-align: center;">
                                     {{ collab['waiting_reason'] }}
                                 </div>
                                 {% endif %}
@@ -193,7 +193,7 @@
             </div>
 
             <!-- Expandable Detail -->
-            <div id="detail-{{ task['id'] }}" style="display: none; padding: 20px; background: var(--secondary-color); border: 1px solid var(--border-color); border-top: none; border-radius: 0 0 8px 8px; margin-top: -15px; margin-bottom: 15px; position: relative; z-index: 1;">
+            <div id="detail-{{ task['id'] }}" style="display: none; padding: 20px; background: var(--card-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid var(--card-border); border-top: none; border-radius: 0 0 16px 16px; margin-top: -15px; margin-bottom: 15px; position: relative; z-index: 1;">
                 
                 {% if task['person_id'] == person['id'] %}
                 <div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 15px;">

@@ -1,28 +1,54 @@
-/* Base Styles */
+/* Base Styles - Modern Dark Mode (Glassmorphism & Neon) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 :root {
-    --primary-color: #4682B4; /* Steel Blue */
-    --secondary-color: #f8f9fa;
-    --text-color: #333;
-    --border-color: #ddd;
-    --card-bg: #fff;
-    --success-color: #28a745;
-    --warning-color: #ffc107;
-    --danger-color: #dc3545;
-    --info-color: #17a2b8;
+    --bg-color: #21252B; /* Bir tık daha açık, ferah koyu gri */
+    --card-bg: rgba(0, 0, 0, 0.25); /* Kartların siyahlığı biraz azaltıldı, tam ideal kıvama getirildi */
+    --card-border: rgba(255, 255, 255, 0.08);
+    --primary-color: #3b82f6; /* Electric Blue */
+    --primary-hover: #60a5fa;
+    --text-primary: #f8fafc;
+    --text-secondary: #a0aec0;
+    
+    /* Neon Status Colors */
+    --success-color: #10b981; /* Emerald */
+    --success-bg: rgba(16, 185, 129, 0.15);
+    
+    --warning-color: #fbbf24; /* Amber */
+    --warning-bg: rgba(251, 191, 36, 0.15);
+    
+    --danger-color: #ef4444; /* Red */
+    --danger-bg: rgba(239, 68, 68, 0.15);
+    
+    --info-color: #0ea5e9; /* Light Blue */
+    --info-bg: rgba(14, 165, 233, 0.15);
+    
+    --neutral-color: #8b5cf6; /* Purple for uncertain */
+    --neutral-bg: rgba(139, 92, 246, 0.15);
+
+    --inactive-color: #64748b; /* Slate for hold */
+    --inactive-bg: rgba(100, 116, 139, 0.15);
+    
+    --input-bg: rgba(33, 37, 43, 0.8);
 }
 
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     margin: 0;
     padding: 0;
-    background-color: var(--secondary-color);
-    color: var(--text-color);
+    background-color: var(--bg-color);
+    background-image: 
+        radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.08) 0%, transparent 25%),
+        radial-gradient(circle at 85% 30%, rgba(16, 185, 129, 0.05) 0%, transparent 25%);
+    background-attachment: fixed;
+    color: var(--text-primary);
+    line-height: 1.5;
 }
 
 .container {
-    max-width: 1000px;
+    max-width: 1100px;
     margin: 0 auto;
-    padding: 20px;
+    padding: 30px 20px;
 }
 
 /* Header */
@@ -31,103 +57,166 @@ header {
     justify-content: space-between;
     align-items: center;
     padding: 20px 0;
-    border-bottom: 2px solid var(--primary-color);
-    margin-bottom: 30px;
+    border-bottom: 1px solid var(--card-border);
+    margin-bottom: 40px;
 }
 
-h1, h2 {
-    color: var(--primary-color);
+h1, h2, h3 {
+    color: var(--text-primary);
     margin: 0;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+
+h1 {
+    background: linear-gradient(to right, #60a5fa, #3b82f6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 700;
 }
 
 .header-actions {
     display: flex;
-    gap: 10px;
+    gap: 12px;
 }
 
+/* Buttons */
 .btn {
-    padding: 10px 15px;
-    border: none;
-    border-radius: 5px;
+    padding: 10px 18px;
+    border: 1px solid transparent;
+    border-radius: 8px;
     cursor: pointer;
-    font-weight: bold;
+    font-weight: 500;
+    font-size: 0.95rem;
     text-decoration: none;
-    display: inline-block;
-    transition: background-color 0.3s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(5px);
+}
+
+.btn:active {
+    transform: scale(0.97);
 }
 
 .btn-primary {
-    background-color: var(--primary-color);
+    background: linear-gradient(135deg, var(--primary-color), #2563eb);
     color: white;
+    box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3);
 }
 .btn-primary:hover {
-    background-color: #315f86;
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
+    transform: translateY(-2px);
 }
 
-.btn-success { background-color: var(--success-color); color: white; }
-.btn-warning { background-color: var(--warning-color); color: #333; }
-.btn-danger { background-color: var(--danger-color); color: white; }
-.btn-info { background-color: var(--info-color); color: white; }
-.btn-secondary { background-color: #6c757d; color: white; }
+.btn-success { background-color: var(--success-bg); color: var(--success-color); border-color: rgba(16,185,129,0.3); }
+.btn-success:hover { background-color: rgba(16,185,129,0.25); transform: translateY(-2px); }
 
-/* Dashboard Cards */
+.btn-warning { background-color: var(--warning-bg); color: var(--warning-color); border-color: rgba(251,191,36,0.3); }
+.btn-warning:hover { background-color: rgba(251,191,36,0.25); transform: translateY(-2px); }
+
+.btn-danger { background-color: var(--danger-bg); color: var(--danger-color); border-color: rgba(239,68,68,0.3); }
+.btn-danger:hover { background-color: rgba(239,68,68,0.25); transform: translateY(-2px); }
+
+.btn-info { background-color: var(--info-bg); color: var(--info-color); border-color: rgba(14,165,233,0.3); }
+.btn-info:hover { background-color: rgba(14,165,233,0.25); transform: translateY(-2px); }
+
+.btn-secondary { background-color: var(--inactive-bg); color: var(--text-primary); border-color: var(--card-border); }
+.btn-secondary:hover { background-color: rgba(255,255,255,0.1); transform: translateY(-2px); }
+
+/* Dashboard Cards (People) */
 .person-cards {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(4, 1fr); /* Tam olarak 4 kolon */
+    gap: 24px;
     margin-top: 20px;
 }
 
 .person-card {
-    background-color: var(--card-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 20px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    padding: 30px 20px;
+    min-height: 120px; /* Dikey dikdörtgen hissi vermek için */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
     text-align: center;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
     text-decoration: none;
-    color: var(--text-color);
-    transition: transform 0.2s, box-shadow 0.2s;
+    color: var(--text-primary);
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
 .person-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 6px 12px rgba(0,0,0,0.1);
-    border-color: var(--primary-color);
+    transform: translateY(-5px) scale(1.02);
+    background: rgba(0, 0, 0, 0.4); /* Üzerine gelince biraz daha derinleşsin */
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 0 15px rgba(59, 130, 246, 0.15);
 }
 
 .person-card h3 {
     margin: 0;
-    font-size: 1.2rem;
+    font-size: 1.25rem;
+    font-weight: 500;
 }
 
 /* Forms */
 .form-card {
     background: var(--card-bg);
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 25px;
+    border-radius: 16px;
+    border: 1px solid var(--card-border);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
     margin-bottom: 30px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
 }
 
 .form-group {
-    margin-bottom: 15px;
+    margin-bottom: 18px;
 }
 
 .form-group label {
     display: block;
-    margin-bottom: 5px;
-    font-weight: bold;
+    margin-bottom: 8px;
+    font-weight: 500;
+    font-size: 0.95rem;
+    color: var(--text-secondary);
 }
 
 .form-group input[type="text"],
 .form-group input[type="date"],
 .form-group select {
     width: 100%;
-    padding: 10px;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
+    padding: 12px 15px;
+    background-color: var(--input-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    color: var(--text-primary);
     box-sizing: border-box;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+    background-color: rgba(15, 23, 42, 0.8);
+}
+
+/* Fix for date picker icon color in webkit */
+::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    opacity: 0.7;
+    cursor: pointer;
 }
 
 .checkbox-group {
@@ -136,69 +225,100 @@ h1, h2 {
     gap: 10px;
 }
 
+/* Checkbox Styling */
+input[type="checkbox"] {
+    accent-color: var(--primary-color);
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
 /* Lists */
 .task-list {
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 16px;
+    animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .task-item {
     background: var(--card-bg);
-    border-left: 5px solid var(--primary-color);
-    padding: 15px;
-    border-radius: 4px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    border: 1px solid var(--card-border);
+    border-left: 4px solid var(--primary-color);
+    padding: 18px 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     display: flex;
     justify-content: space-between;
     align-items: center;
+    backdrop-filter: blur(10px);
+    transition: all 0.2s ease;
+}
+
+.task-item:hover {
+    background: rgba(0, 0, 0, 0.35);
+    transform: translateX(4px);
+    border-color: rgba(255,255,255,0.1);
 }
 
 .task-info {
     flex-grow: 1;
     word-break: break-word;
     overflow-wrap: break-word;
-    max-width: 80%;
+    max-width: 75%;
 }
 
 .task-title {
-    font-weight: bold;
-    font-size: 1.1rem;
-    margin-bottom: 5px;
+    font-weight: 500;
+    font-size: 1.15rem;
+    margin-bottom: 8px;
+    color: var(--text-primary);
 }
 
 .expandable-task-title {
-    text-decoration: underline;
-    text-decoration-color: transparent;
-    transition: text-decoration-color 0.2s;
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: color 0.2s;
+    cursor: pointer;
 }
 
 .expandable-task-title:hover {
-    text-decoration-color: var(--primary-color);
+    color: var(--primary-hover);
 }
 
 .task-meta {
     font-size: 0.9rem;
-    color: #666;
+    color: var(--text-secondary);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
 }
 
+/* Glowing Neon Badges */
 .badge {
-    padding: 4px 8px;
-    border-radius: 12px;
-    font-size: 0.8rem;
-    font-weight: bold;
-    color: white;
-    margin-right: 10px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border: 1px solid transparent;
 }
 
-.badge-1 { background-color: var(--danger-color); color: white; } /* This week (Urgent - Red) */
-.badge-2 { background-color: var(--warning-color); color: #333; } /* Next week (Warning - Orange/Yellow) */
-.badge-3 { background-color: var(--success-color); color: white; } /* This month (Safe - Green) */
-.badge-4 { background-color: #6f42c1; color: white;} /* Uncertain Deadline (Purple) */
-.badge-5 { background-color: #6c757d; color: white;} /* On hold (Inactive - Gray) */
+.badge-1 { background: var(--danger-bg); color: var(--danger-color); border-color: rgba(239,68,68,0.3); } 
+.badge-2 { background: var(--warning-bg); color: var(--warning-color); border-color: rgba(251,191,36,0.3); } 
+.badge-3 { background: var(--success-bg); color: var(--success-color); border-color: rgba(16,185,129,0.3); } 
+.badge-4 { background: var(--neutral-bg); color: var(--neutral-color); border-color: rgba(139,92,246,0.3); } 
+.badge-5 { background: var(--inactive-bg); color: var(--inactive-color); border-color: rgba(100,116,139,0.3); } 
 
-.badge-open { background-color: var(--primary-color); }
-.badge-closed { background-color: var(--danger-color); }
+.badge-open { background: rgba(59,130,246,0.15); color: #60a5fa; border-color: rgba(59,130,246,0.3); }
+.badge-closed { background: var(--inactive-bg); color: var(--inactive-color); border-color: rgba(100,116,139,0.3); }
 
 .task-actions {
     display: flex;
@@ -210,13 +330,37 @@ h1, h2 {
     background: none;
     border: none;
     cursor: pointer;
-    font-size: 16px;
-    opacity: 0.3;
-    transition: opacity 0.2s;
-    padding: 5px;
-    margin-left: 10px;
+    font-size: 18px;
+    color: var(--text-secondary);
+    opacity: 0.5;
+    transition: all 0.2s;
+    padding: 8px;
+    border-radius: 50%;
 }
 
 .btn-delete-icon:hover {
     opacity: 1;
+    color: var(--danger-color);
+    background: var(--danger-bg);
+}
+
+/* Custom Scrollbar for a premium feel */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: var(--bg-color);
+}
+::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.1);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.2);
+}
+
+/* Waiting Reason text inside task items */
+.task-item strong[style*="color: var(--text-color)"] {
+    color: var(--text-primary) !important;
 }
